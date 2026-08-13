@@ -46,7 +46,8 @@ DEFAULT_PROMPTS: list[Prompt] = [
 ]
 
 MENU_OPTIONS = {
-    "1": "종료",
+    "1": "전체 프롬프트 목록 보기",
+    "8": "종료",
 }
 
 
@@ -54,6 +55,22 @@ def create_initial_prompts() -> list[Prompt]:
     """기본 프롬프트를 복사해 실행별 독립 목록을 생성한다."""
 
     return deepcopy(DEFAULT_PROMPTS)
+
+
+def show_prompt_list(prompts: list[Prompt], heading: str = "전체 프롬프트 목록") -> None:
+    """프롬프트 목록을 번호, 제목, 카테고리, 즐겨찾기 표시와 함께 출력한다."""
+
+    print(f"\n[ {heading} ]")
+    if not prompts:
+        print("저장된 프롬프트가 없습니다.")
+        return
+
+    for number, prompt in enumerate(prompts, start=1):
+        favorite_mark = "⭐" if prompt["favorite"] else "-"
+        print(
+            f"{number}. {prompt['title']} | 카테고리: {prompt['category']} | "
+            f"즐겨찾기: {favorite_mark}"
+        )
 
 
 def show_menu() -> None:
@@ -79,11 +96,14 @@ def get_menu_choice() -> str:
 def main() -> None:
     """메뉴를 반복 출력하고 종료 선택을 처리한다."""
 
-    create_initial_prompts()
+    prompts = create_initial_prompts()
     print("프롬프트 관리자에 오신 것을 환영합니다.")
     while True:
         show_menu()
-        if get_menu_choice() == "1":
+        choice = get_menu_choice()
+        if choice == "1":
+            show_prompt_list(prompts)
+        elif choice == "8":
             print("프롬프트 관리자를 종료합니다. 안녕히 가세요.")
             break
 
