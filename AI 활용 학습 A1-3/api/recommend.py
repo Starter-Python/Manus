@@ -1,7 +1,7 @@
 """온기록의 Vercel Python Serverless Function.
 
 디자인 원칙: AI는 회복 루틴의 '정답'이 아니라 사용자가 조정할 수 있는 짧은 초안을 만든다.
-보안 원칙: API 키는 OPENAI_API_KEY 환경 변수에서만 읽으며, HTTP 응답·로그에 노출하지 않는다.
+보안 원칙: Gemini API 키는 GEMINI_API_KEY 환경 변수에서만 읽으며, HTTP 응답·로그에 노출하지 않는다.
 """
 
 from __future__ import annotations
@@ -13,11 +13,22 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from typing import Any
 
-from openai import APIConnectionError, APIStatusError, AuthenticationError, OpenAI, RateLimitError
+from google import genai
 
 
 MAX_NOTE_LENGTH = 200
 ALLOWED_MINUTES = {"5", "15", "30"}
+ROUTINE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "kicker": {"type": "string"},
+        "title": {"type": "string"},
+        "opening": {"type": "string"},
+        "steps": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 3},
+        "note": {"type": "string"},
+    },
+    "required": ["kicker", "title", "opening", "steps", "note"],
+}
 
 
 def safe_text(value: Any, limit: int = 200) -> str:
@@ -28,12 +39,8 @@ def safe_text(value: Any, limit: int = 200) -> str:
 
 
 def parse_routine(raw: str) -> dict[str, Any]:
-    """모델 출력에서 JSON 객체만 추출하고 최소 형식을 보장한다."""
-    match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
-    if not match:
-        raise ValueError("AI 결과를 읽을 수 없습니다.")
-
-    data = json.loads(match.group(0))
+    """Gemini의 구조화된 JSON 텍스트를 검사하고 최소 형식을 보장한다."""
+    data = json.loads(raw)
     steps = data.get("steps", [])
     if not isinstance(steps, list):
         steps = []
@@ -68,16 +75,13 @@ def build_prompt(feeling: str, minutes: str, focus: str, note: str) -> str:
 규칙:
 1. 총 {minutes}분 안에 가능한 3단계로 구성하고, 각 단계에 대략적인 시간 또는 행동의 크기를 포함하세요.
 2. 지나치게 낙관적이거나 훈계하는 말투를 피하고, 선택과 조정의 여지를 남기세요.
-3. 결과는 한국어로만 작성하고, 마크다운이나 코드 블록 없이 아래 JSON 객체 하나만 반환하세요.
-4. JSON 키는 kicker, title, opening, steps, note를 정확히 사용하세요. steps는 정확히 3개 문자열의 배열이어야 합니다.
-
-응답 예시 형식:
-{{"kicker":"15분의 정리","title":"머릿속을 비우는 짧은 틈","opening":"지금의 복잡함을 해결하려 하지 않고, 잠시 분리해 봅니다.","steps":["1분 — ...","10분 — ...","4분 — ..."],"note":"..."}}
+3. 결과는 한국어로만 작성하세요.
+4. 반환 스키마의 kicker, title, opening, steps, note를 모두 채우세요. steps는 정확히 3개여야 합니다.
 """
 
 
 class handler(BaseHTTPRequestHandler):
-    """POST /api/recommend 요청을 받아 OpenAI Responses API를 호출한다."""
+    """POST /api/recommend 요청을 받아 Gemini Interactions API를 호출한다."""
 
     def _send_json(self, status: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -115,30 +119,35 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "현재 상태, 시간, 원하는 감각을 모두 입력해 주세요."})
             return
 
-        api_key = os.environ.get("OPENAI_API_KEY")
+        api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "AI 기능 설정이 아직 완료되지 않았습니다. 관리자에게 환경 변수 설정을 요청해 주세요."})
             return
 
         try:
-            client = OpenAI(api_key=api_key, timeout=10.0, max_retries=1)
-            response = client.responses.create(
-                model=os.environ.get("OPENAI_MODEL", "gpt-4.1-mini"),
+            client = genai.Client(api_key=api_key)
+            interaction = client.interactions.create(
+                model=os.environ.get("GEMINI_MODEL", "gemini-3.6-flash"),
                 input=build_prompt(feeling, minutes, focus, note),
+                response_format={"type": "text", "mime_type": "application/json", "schema": ROUTINE_SCHEMA},
             )
-            self._send_json(HTTPStatus.OK, parse_routine(response.output_text))
-        except AuthenticationError:
-            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "AI 기능 인증 설정을 확인해 주세요."})
-        except RateLimitError:
-            self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "요청이 잠시 많습니다. 잠깐 후 다시 시도해 주세요."})
-        except APIConnectionError:
-            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": "AI 서비스와 연결하지 못했습니다. 잠시 후 다시 시도해 주세요."})
-        except APIStatusError:
-            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": "AI 서비스가 응답하지 않습니다. 잠시 후 다시 시도해 주세요."})
+            self._send_json(HTTPStatus.OK, parse_routine(interaction.output_text))
         except (ValueError, json.JSONDecodeError):
             self._send_json(HTTPStatus.BAD_GATEWAY, {"error": "루틴 결과를 정리하지 못했습니다. 다시 시도해 주세요."})
-        except Exception:  # 내부 세부 정보와 키를 응답에 노출하지 않는다.
-            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "예기치 못한 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."})
+        except Exception as error:  # SDK 버전에 따른 오류 형식을 함께 처리하고 세부 정보는 숨긴다.
+            raw_status = getattr(error, "code", None) or getattr(error, "status_code", None)
+            try:
+                status = int(raw_status) if raw_status is not None else None
+            except (TypeError, ValueError):
+                status = None
+            if status in {401, 403}:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "Gemini API 인증 설정을 확인해 주세요."})
+            elif status == 429:
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "Gemini 무료 사용량 또는 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요."})
+            elif status and int(status) >= 500:
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": "Gemini 서비스가 응답하지 않습니다. 잠시 후 다시 시도해 주세요."})
+            else:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "예기치 못한 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."})
 
     def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler interface
         self._send_json(HTTPStatus.METHOD_NOT_ALLOWED, {"error": "POST 요청만 사용할 수 있습니다."})

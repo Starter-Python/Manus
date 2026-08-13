@@ -32,7 +32,7 @@
 | 프론트엔드 | Vanilla JavaScript | 폼 검증, `fetch` 요청, 결과 렌더링, 타임아웃 처리 |
 | 백엔드 | Python | 입력 검증과 AI API 호출 |
 | 서버리스 | Vercel Functions | `/api/recommend` 엔드포인트 실행 |
-| AI | OpenAI Responses API | 한국어 3단계 루틴 초안 생성 |
+| AI | Gemini Interactions API | 한국어 3단계 루틴 초안 생성 |
 
 Vercel은 루트의 `api/` 디렉터리에 있는 Python 파일을 파일 기반 함수로 제공할 수 있고, Python의 ASGI·WSGI·`BaseHTTPRequestHandler` 방식을 지원합니다. [1] 본 프로젝트는 단일 POST 엔드포인트에 적합한 `BaseHTTPRequestHandler` 방식을 사용했습니다.
 
@@ -66,14 +66,14 @@ fetch('/api/recommend', POST JSON)
   ↓
 api/recommend.py의 입력 검증·길이 제한
   ↓
-OPENAI_API_KEY 환경 변수로 OpenAI Responses API 호출
+GEMINI_API_KEY 환경 변수로 Gemini Interactions API 호출
   ↓
 3단계 루틴 JSON 응답
   ↓
 app.js가 안전하게 화면에 결과 렌더링
 ```
 
-API 키는 **절대로 `app.js`나 `index.html`에 넣지 않습니다.** OpenAI는 API 키를 브라우저 같은 클라이언트 코드에 노출하지 말고, 서버의 환경 변수 또는 키 관리 서비스에서 읽으라고 안내합니다. [2] 이 프로젝트는 `api/recommend.py`가 Vercel 환경 변수에서 키를 읽도록 구현했습니다.
+API 키는 **절대로 `app.js`나 `index.html`에 넣지 않습니다.** Gemini 공식 문서는 API 키를 비밀번호처럼 취급하고, Git과 프로덕션 클라이언트 코드에 노출하지 말라고 안내합니다. [2] 이 프로젝트는 `api/recommend.py`가 Vercel 환경 변수에서 키를 읽도록 구현했습니다. 자세한 설정 방법은 [`GEMINI_VERCEL_ENV_GUIDE.md`](./GEMINI_VERCEL_ENV_GUIDE.md)를 참고하세요.
 
 ## 로컬 실행 방법
 
@@ -98,14 +98,14 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env.local
-# .env.local 파일의 OPENAI_API_KEY=... 부분만 실제 키로 변경
+# .env.local 파일의 GEMINI_API_KEY=... 부분만 실제 키로 변경
 ```
 
 macOS/Linux의 현재 터미널에서만 임시로 설정하려면 다음처럼 사용할 수 있습니다.
 
 ```bash
-export OPENAI_API_KEY="실제_API_키"
-export OPENAI_MODEL="gpt-4.1-mini"  # 선택 사항
+export GEMINI_API_KEY="실제_Gemini_API_키"
+export GEMINI_MODEL="gemini-3.6-flash"  # 선택 사항
 ```
 
 ### 4. Vercel 로컬 개발 서버 실행
@@ -130,8 +130,8 @@ npx vercel dev
 
 | 변수명 | 필수 여부 | 설명 |
 |---|---:|---|
-| `OPENAI_API_KEY` | 필수 | OpenAI 대시보드에서 만든 실제 API 키. GitHub에 커밋하지 않습니다. |
-| `OPENAI_MODEL` | 선택 | 계정에서 사용 가능한 텍스트 생성 모델명. 기본값은 `gpt-4.1-mini`입니다. |
+| `GEMINI_API_KEY` | 필수 | Google AI Studio에서 만든 실제 Gemini API 키. GitHub에 커밋하지 않습니다. |
+| `GEMINI_MODEL` | 선택 | 계정에서 사용 가능한 텍스트 생성 모델명. 기본값은 `gemini-3.6-flash`입니다. |
 
 4. **Deploy**를 실행합니다.
 5. 배포가 완료되면 생성된 `https://...vercel.app` 주소를 이 README 맨 위의 **배포 URL** 칸에 기록합니다.
@@ -145,8 +145,8 @@ Vercel 환경 변수는 코드 밖에서 환경별로 관리되며, 값 변경�
 |---|---|
 | 필수 입력 누락 | “현재 상태, 시간, 원하는 감각을 모두 골라주세요.” |
 | 요청 지연(12초) | “응답이 조금 늦어지고 있습니다. 잠시 후 다시 시도해 주세요.” |
-| AI 키 미설정 | “AI 기능 설정이 아직 완료되지 않았습니다.” |
-| 요청 과다(429) | “요청이 잠시 많습니다. 잠깐 후 다시 시도해 주세요.” |
+| Gemini 키 미설정 | “AI 기능 설정이 아직 완료되지 않았습니다.” |
+| 요청 과다(429) | “Gemini 무료 사용량 또는 요청 한도에 도달했습니다.” |
 | AI 연결·응답 오류 | 원인을 노출하지 않고 재시도 가능한 안내를 표시 |
 
 ## 제출 문서와 증빙
@@ -165,5 +165,5 @@ Vercel 환경 변수는 코드 밖에서 환경별로 관리되며, 값 변경�
 ## 참고 자료
 
 [1]: https://vercel.com/docs/functions/runtimes/python/api-directory "Vercel — Python Functions in the /api Directory"
-[2]: https://developers.openai.com/api/reference/overview/ "OpenAI — API Overview: Authentication"
+[2]: https://ai.google.dev/gemini-api/docs/api-key "Google AI for Developers — Using Gemini API keys"
 [3]: https://vercel.com/docs/environment-variables "Vercel — Environment variables"

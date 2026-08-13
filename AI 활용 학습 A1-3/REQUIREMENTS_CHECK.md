@@ -28,8 +28,8 @@
 | 5 | AI 결과 표시 | 결과 제목·안내·3단계·메모를 DOM에 표시 | `app.js` | **충족** |
 | 5 | 실패 처리 1개 이상 | 빈 입력, 4xx/5xx, 429, 연결 오류, 12초 지연 처리 | `app.js`, `api/recommend.py` | **충족** |
 | 6 | `api/` Python 엔드포인트 | `POST /api/recommend` Vercel Python 함수 | `api/recommend.py` | **충족** |
-| 6 | AI API 호출과 결과 반환 | OpenAI Responses API 호출, JSON 파싱·반환 | `api/recommend.py` | **코드 구현 완료 / 키 설정 후 실동작 확인 필요** |
-| 6 | `requirements.txt` | OpenAI Python SDK 선언 | `requirements.txt` | **충족** |
+| 6 | AI API 호출과 결과 반환 | Gemini Interactions API 호출, JSON 파싱·반환 | `api/recommend.py` | **코드 구현 완료 / 키 설정 후 실동작 확인 필요** |
+| 6 | `requirements.txt` | Gemini Python SDK 선언 | `requirements.txt` | **충족** |
 | 6 | 프론트에서 `fetch('/api/...')` 호출 | `fetch('/api/recommend')` POST 요청 | `app.js` | **충족** |
 | 7 | GitHub와 Vercel 연결·배포 | Vercel 설정 파일·배포 절차 준비 | `vercel.json`, `README.md` | **사용자 계정 작업 필요** |
 | 7 | 배포 URL에서 전체 기능 검증 | 검증 절차 문서화 | `README.md`, `EVIDENCE_GUIDE.md` | **배포 후 확인 필요** |
@@ -52,6 +52,6 @@
 과제의 **설계·코드·문서·보안·실패 처리 요건은 구현했다.** 다만 실제 Vercel 배포 URL, 실제 API 키로 만든 동작 화면, 배포된 모바일 화면은 외부 계정 및 비밀 키가 필요한 마지막 단계이므로 아직 검증할 수 없다. 아래 항목만 완료하면 제출 패키지의 실서비스·증빙 요구까지 충족된다.
 
 1. Vercel에서 GitHub 저장소를 Import하고 Root Directory를 `AI 활용 학습 A1-3`로 지정한다.
-2. `OPENAI_API_KEY`를 Vercel Environment Variables에 추가하고 Production 배포한다.
+2. `GEMINI_API_KEY`를 Vercel Environment Variables에 추가하고 Production 배포한다.
 3. 공개 URL에서 정상 결과, 빈 입력 메시지, 모바일 화면을 캡처해 `evidence/`에 넣는다.
 4. `README.md`와 이 문서의 배포 URL 표기를 실제 URL로 교체한다.

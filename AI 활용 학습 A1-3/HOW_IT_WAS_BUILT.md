@@ -30,6 +30,7 @@ AI 활용 학습 A1-3/
 ├── vercel.json                # Vercel 함수 및 보안 헤더 설정
 ├── .env.example               # 실제 키 없는 환경 변수 예시
 ├── README.md                  # 실행·배포 안내
+├── GEMINI_VERCEL_ENV_GUIDE.md # Gemini 키와 Vercel 환경 변수 안내
 ├── SERVICE_PLAN.md            # 서비스 기획서
 ├── HOW_IT_WAS_BUILT.md        # 이 문서
 └── REQUIREMENTS_CHECK.md      # 요구사항 확인표
@@ -76,7 +77,7 @@ const response = await fetch('/api/recommend', {
 
 ### 4.1 왜 브라우저가 아니라 Python에서 AI API를 호출하는가
 
-OpenAI API 키는 비밀 정보다. 공식 문서는 키를 브라우저나 앱 같은 클라이언트 코드에 노출하지 말고 서버의 환경 변수나 키 관리 서비스에서 읽으라고 안내한다. [1] 따라서 `app.js`에는 키가 없고, `api/recommend.py`가 `OPENAI_API_KEY` 환경 변수를 읽는다.
+Gemini API 키는 비밀 정보다. 공식 문서는 키를 브라우저나 앱 같은 클라이언트 코드에 노출하지 말고 서버의 환경 변수나 키 관리 서비스에서 읽으라고 안내한다. [1] 따라서 `app.js`에는 키가 없고, `api/recommend.py`가 `GEMINI_API_KEY` 환경 변수를 읽는다.
 
 Vercel은 루트의 `api/` 안에 있는 Python 파일을 파일 기반 함수로 매핑할 수 있으며, ASGI·WSGI 앱 또는 `BaseHTTPRequestHandler` 기반 핸들러를 지원한다. [2] 온기록은 한 개의 단순한 POST 엔드포인트만 필요하므로 표준 라이브러리의 `BaseHTTPRequestHandler`를 사용했다. `/api/recommend` 경로는 `api/recommend.py` 파일에 연결된다.
 
@@ -85,8 +86,8 @@ Vercel은 루트의 `api/` 안에 있는 Python 파일을 파일 기반 함수�
 1. `Content-Length`를 확인하여 비어 있거나 4KB를 넘는 요청을 거절한다.
 2. JSON을 읽고 상태·시간·원하는 감각을 검사한다. 시간은 5/15/30분만 허용한다.
 3. 메모는 제어 문자를 제거하고 200자로 제한한다.
-4. `OPENAI_API_KEY`가 설정되어 있는지 확인한다. 없으면 서비스 설정 안내를 반환한다.
-5. 공식 Python SDK의 `client.responses.create()`로 AI에게 루틴 생성 요청을 보낸다. Python SDK 사용 예시는 OpenAI 공식 퀵스타트에서 확인할 수 있다. [3]
+4. `GEMINI_API_KEY`가 설정되어 있는지 확인한다. 없으면 서비스 설정 안내를 반환한다.
+5. 공식 Gemini Python SDK의 `client.interactions.create()`로 AI에게 루틴 생성 요청을 보낸다. Gemini 공식 시작 문서는 `google-genai` SDK와 환경 변수 사용법을 안내한다. [3]
 6. 모델 결과에서 JSON 객체를 파싱하고, 단계가 정확히 3개인지 다시 검사한다.
 7. 성공·인증 실패·요청 과다·연결 실패·형식 오류를 다른 HTTP 상태와 한국어 안내 문구로 반환한다.
 
@@ -96,9 +97,9 @@ Vercel은 루트의 `api/` 안에 있는 Python 파일을 파일 기반 함수�
 
 ## 5. 환경 변수와 배포를 준비한 방법
 
-실제 키는 `.env.example`이 아닌 Vercel 프로젝트 설정에만 입력한다. `.env.example`은 변수 이름을 알려 주는 예시이고, `.gitignore`는 `.env`, `.env.local` 등이 Git에 올라가지 않게 막는다. Vercel 환경 변수는 코드 밖에서 설정되며, 배포 환경별로 값이 달라질 수 있다. [4]
+실제 키는 `.env.example`이 아닌 Vercel 프로젝트 설정에만 입력한다. `.env.example`은 변수 이름을 알려 주는 예시이고, `.gitignore`는 `.env`, `.env.local` 등이 Git에 올라가지 않게 막는다. Vercel 환경 변수는 코드 밖에서 설정되며, 배포 환경별로 값이 달라질 수 있다. [4] 구체적인 화면 경로와 키 보안 원칙은 [`GEMINI_VERCEL_ENV_GUIDE.md`](./GEMINI_VERCEL_ENV_GUIDE.md)에 정리했다.
 
-배포할 때는 GitHub 저장소를 Vercel에 Import하고, **Root Directory를 `AI 활용 학습 A1-3`**로 지정한다. 그다음 `OPENAI_API_KEY`와 선택적인 `OPENAI_MODEL`을 Production·Preview·Development 중 필요한 환경에 설정한다. 값 변경은 이전 배포에 적용되지 않으므로, 변경 후 새 배포가 필요하다. [4]
+배포할 때는 GitHub 저장소를 Vercel에 Import하고, **Root Directory를 `AI 활용 학습 A1-3`**로 지정한다. 그다음 `GEMINI_API_KEY`와 선택적인 `GEMINI_MODEL`을 Production·Preview·Development 중 필요한 환경에 설정한다. 값 변경은 이전 배포에 적용되지 않으므로, 변경 후 새 배포가 필요하다. [4]
 
 ## 6. 오류를 발견했을 때의 점검 순서
 
@@ -108,9 +109,9 @@ AI 코딩 도구를 사용해 코드를 만들더라도, 오류를 ‘도구가 
 |---|---|---|---|
 | 버튼을 눌러도 아무 반응이 없음 | 브라우저 개발자 도구 Console | JavaScript 문법 오류 또는 파일 경로 오류 | 오류 줄을 확인하고 `app.js` 연결·문법 점검 |
 | 400 오류 | Network 탭의 요청 본문 | 필수값 누락·허용하지 않은 시간값 | 폼의 `name`과 서버 검증 조건을 비교 |
-| 503 ‘설정 미완료’ | Vercel Environment Variables | `OPENAI_API_KEY` 미설정 | 키를 환경 변수로 추가하고 재배포 |
-| 429 오류 | API 응답 상태 | 호출 횟수 또는 쿼터 제한 | 잠시 기다린 뒤 재시도, 사용량·한도 확인 |
-| 502 오류 | Vercel Function Logs | OpenAI 연결·응답 형식 문제 | 네트워크 상태·모델명·응답 파싱 점검 |
+| 503 ‘설정 미완료’ | Vercel Environment Variables | `GEMINI_API_KEY` 미설정 | 키를 환경 변수로 추가하고 재배포 |
+| 429 오류 | API 응답 상태 | Gemini Free Tier 사용량 또는 요청 한도 | 잠시 기다린 뒤 재시도, AI Studio Usage 확인 |
+| 502 오류 | Vercel Function Logs | Gemini 연결·응답 형식 문제 | 네트워크 상태·모델명·응답 파싱 점검 |
 | 배포에서만 실패 | Vercel Deployment Logs | 루트 디렉터리·패키지·환경 변수 차이 | 로컬과 Vercel 설정을 한 항목씩 비교 |
 
 ## 7. 직접 확인해야 하는 최종 흐름
@@ -119,7 +120,7 @@ AI 코딩 도구를 사용해 코드를 만들더라도, 오류를 ‘도구가 
 
 ## 참고 자료
 
-[1]: https://developers.openai.com/api/reference/overview/ "OpenAI — API Overview: Authentication"
+[1]: https://ai.google.dev/gemini-api/docs/api-key "Google AI for Developers — Using Gemini API keys"
 [2]: https://vercel.com/docs/functions/runtimes/python/api-directory "Vercel — Python Functions in the /api Directory"
-[3]: https://developers.openai.com/api/docs/quickstart "OpenAI — Developer quickstart"
+[3]: https://ai.google.dev/gemini-api/docs/get-started "Google AI for Developers — Gemini API get started"
 [4]: https://vercel.com/docs/environment-variables "Vercel — Environment variables"

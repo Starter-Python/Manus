@@ -58,7 +58,7 @@ AI 기능은 결과를 보여 주는 것만큼 실패 상황을 명확히 안내
 
 ## 5. 기술 구조
 
-프론트엔드는 프레임워크 없이 `index.html`, `styles.css`, `app.js`로 구성했다. Vercel은 프로젝트 루트의 `api/` 디렉터리에 있는 Python 파일을 파일 기반 함수로 제공하며, 해당 파일은 라우트에 매핑될 수 있다. [1] OpenAI의 공식 Python SDK는 환경 변수에서 API 키를 읽어 Responses API를 호출할 수 있다. [2] API 키는 브라우저 코드에 넣지 않고 서버의 환경 변수 또는 키 관리 서비스에서 읽어야 한다는 공식 보안 지침을 따른다. [3]
+프론트엔드는 프레임워크 없이 `index.html`, `styles.css`, `app.js`로 구성했다. Vercel은 프로젝트 루트의 `api/` 디렉터리에 있는 Python 파일을 파일 기반 함수로 제공하며, 해당 파일은 라우트에 매핑될 수 있다. [1] Gemini의 공식 Python SDK는 `GEMINI_API_KEY` 환경 변수를 사용해 Interactions API를 호출할 수 있다. [2] API 키는 브라우저 코드에 넣지 않고 서버의 환경 변수 또는 키 관리 서비스에서 읽어야 한다는 공식 보안 지침을 따른다. [3]
 
 ```text
 [사용자 브라우저]
@@ -66,8 +66,8 @@ AI 기능은 결과를 보여 주는 것만큼 실패 상황을 명확히 안내
          └─ app.js: fetch('/api/recommend', POST JSON)
               └─ Vercel Python Function: api/recommend.py
                    ├─ 입력 검증·길이 제한
-                   ├─ OPENAI_API_KEY 환경 변수 읽기
-                   └─ OpenAI Responses API 호출
+                   ├─ GEMINI_API_KEY 환경 변수 읽기
+                   └─ Gemini Interactions API 호출
                         └─ JSON 결과 반환 → 화면 렌더링
 ```
 
@@ -78,5 +78,5 @@ AI 기능은 결과를 보여 주는 것만큼 실패 상황을 명확히 안내
 ## 참고 자료
 
 [1]: https://vercel.com/docs/functions/runtimes/python/api-directory "Vercel — Python Functions in the /api Directory"
-[2]: https://developers.openai.com/api/docs/quickstart "OpenAI — Developer quickstart"
-[3]: https://developers.openai.com/api/reference/overview/ "OpenAI — API Overview: Authentication"
+[2]: https://ai.google.dev/gemini-api/docs/get-started "Google AI for Developers — Gemini API get started"
+[3]: https://ai.google.dev/gemini-api/docs/api-key "Google AI for Developers — Using Gemini API keys"
