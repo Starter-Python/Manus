@@ -153,8 +153,8 @@ def get_view_categories(prompts: list[Prompt]) -> list[str]:
     return [*CATEGORIES, *custom_categories]
 
 
-def show_prompts_by_category(prompts: list[Prompt]) -> None:
-    """선택한 카테고리에 속한 프롬프트만 출력한다."""
+def select_category_to_view(prompts: list[Prompt]) -> str:
+    """조회할 카테고리를 선택받는다."""
 
     categories = get_view_categories(prompts)
     print("조회할 카테고리를 선택하세요.")
@@ -164,11 +164,16 @@ def show_prompts_by_category(prompts: list[Prompt]) -> None:
     while True:
         choice = input("카테고리 번호를 입력하세요: ").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(categories):
-            category = categories[int(choice) - 1]
-            filtered_prompts = [prompt for prompt in prompts if prompt["category"] == category]
-            show_prompt_list(filtered_prompts, f"{category} 프롬프트")
-            return
+            return categories[int(choice) - 1]
         print("잘못된 카테고리 번호입니다. 다시 입력하세요.")
+
+
+def show_prompts_by_category(prompts: list[Prompt]) -> None:
+    """선택한 카테고리에 속한 프롬프트만 출력한다."""
+
+    category = select_category_to_view(prompts)
+    filtered_prompts = [prompt for prompt in prompts if prompt["category"] == category]
+    show_prompt_list(filtered_prompts, f"{category} 프롬프트")
 
 
 def find_prompts(prompts: list[Prompt], keyword: str) -> list[Prompt]:
