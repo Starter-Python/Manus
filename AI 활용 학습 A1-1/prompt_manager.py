@@ -53,6 +53,48 @@ DEFAULT_PROMPTS: list[Prompt] = [
         "category": "페르소나",
         "favorite": False,
     },
+    {
+        "title": "SNS 홍보 문구 3종",
+        "content": "신제품의 핵심 장점을 바탕으로 인스타그램용 짧은 홍보 문구 3개를 서로 다른 말투로 작성하세요.",
+        "category": "텍스트 생성",
+        "favorite": False,
+    },
+    {
+        "title": "친환경 제품 상세 이미지",
+        "content": "재활용 소재로 만든 텀블러를 밝은 자연광 아래에서 보여 주는 제품 상세 이미지를 제작하세요. 깨끗한 배경과 신선한 초록색 포인트를 사용합니다.",
+        "category": "이미지 생성",
+        "favorite": False,
+    },
+    {
+        "title": "15초 릴스 스토리보드",
+        "content": "신입 직장인의 아침 루틴을 주제로 15초 세로형 릴스의 장면 구성, 자막, 전환 효과를 시간 순서대로 제안하세요.",
+        "category": "영상 생성",
+        "favorite": True,
+    },
+    {
+        "title": "제품 소개 영상 내레이션",
+        "content": "무선 이어폰의 노이즈 캔슬링과 배터리 장점을 자연스럽게 소개하는 30초 분량의 한국어 내레이션을 작성하세요.",
+        "category": "영상 생성",
+        "favorite": False,
+    },
+    {
+        "title": "고객 상담 도우미 페르소나",
+        "content": "당신은 고객의 불편을 먼저 공감하고, 쉬운 표현으로 해결 방법을 단계별로 안내하는 온라인 쇼핑몰 상담 도우미입니다.",
+        "category": "페르소나",
+        "favorite": False,
+    },
+    {
+        "title": "일일 업무 보고 자동화",
+        "content": "아래 업무 메모를 완료·진행 중·이슈·내일 할 일 네 항목으로 정리한 일일 업무 보고서 형식으로 변환하세요.",
+        "category": "자동화",
+        "favorite": False,
+    },
+    {
+        "title": "주간 회고 질문",
+        "content": "한 주를 돌아볼 수 있도록 잘한 점, 아쉬운 점, 배운 점, 다음 주 목표에 관한 질문 4개를 작성하세요.",
+        "category": "기타",
+        "favorite": False,
+    },
 ]
 
 MENU_OPTIONS = {
@@ -146,12 +188,40 @@ def choose_category() -> str:
         print("잘못된 카테고리 번호입니다. 다시 입력하세요.")
 
 
+def normalize_prompt_text(value: str) -> str:
+    """대소문자와 연속 공백 차이를 무시할 수 있도록 텍스트를 정규화한다."""
+
+    return " ".join(value.casefold().split())
+
+
+def find_duplicate_prompt(prompts: list[Prompt], title: str, content: str) -> Prompt | None:
+    """제목과 내용이 모두 같은 기존 프롬프트를 찾아 반환한다."""
+
+    normalized_title = normalize_prompt_text(title)
+    normalized_content = normalize_prompt_text(content)
+    return next(
+        (
+            prompt
+            for prompt in prompts
+            if normalize_prompt_text(prompt["title"]) == normalized_title
+            and normalize_prompt_text(prompt["content"]) == normalized_content
+        ),
+        None,
+    )
+
+
 def add_prompt(prompts: list[Prompt]) -> None:
-    """제목, 내용, 카테고리를 입력받아 즐겨찾기 해제 상태로 새 프롬프트를 추가한다."""
+    """새 프롬프트를 추가하되 제목과 내용이 같은 항목은 중복 등록하지 않는다."""
 
     print("\n[ 새 프롬프트 추가 ]")
     title = get_non_empty_input("제목")
     content = get_non_empty_input("내용")
+    duplicate = find_duplicate_prompt(prompts, title, content)
+    if duplicate is not None:
+        print(f"동일한 프롬프트가 이미 존재합니다: '{duplicate['title']}'")
+        print("내용을 다르게 작성한 뒤 다시 등록하세요.")
+        return
+
     category = choose_category()
     prompts.append(
         {

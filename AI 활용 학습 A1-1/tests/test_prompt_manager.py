@@ -8,26 +8,30 @@ from unittest.mock import patch
 from prompt_manager import (
     CATEGORIES,
     UserInputCancelled,
+    add_prompt,
     create_initial_prompts,
     filter_prompts_by_category,
+    find_duplicate_prompt,
     find_prompts,
     format_prompt_summary,
     get_favorite_prompts,
     get_view_categories,
     is_valid_prompt_number,
     main,
+    normalize_prompt_text,
     read_user_input,
     run_menu_loop,
 )
 
 
 class PromptManagerTest(unittest.TestCase):
-    """기본 데이터, 필터, 검색, 콘솔 실행 흐름을 확인한다."""
+    """기본 데이터, 중복 검증, 필터, 검색, 콘솔 실행 흐름을 확인한다."""
 
-    def test_initial_prompts_have_required_fields(self) -> None:
+    def test_initial_prompts_have_ten_required_records(self) -> None:
         prompts = create_initial_prompts()
 
-        self.assertGreaterEqual(len(prompts), 3)
+        self.assertEqual(len(prompts), 10)
+        self.assertTrue(set(CATEGORIES).issubset({prompt["category"] for prompt in prompts}))
         for prompt in prompts:
             self.assertEqual(
                 set(prompt),
@@ -51,18 +55,18 @@ class PromptManagerTest(unittest.TestCase):
         )
 
         self.assertTrue(second_run[0]["favorite"])
-        self.assertEqual(len(second_run), 3)
+        self.assertEqual(len(second_run), 10)
 
     def test_prompt_number_validation(self) -> None:
         prompts = create_initial_prompts()
 
         self.assertTrue(is_valid_prompt_number("1", prompts))
-        self.assertTrue(is_valid_prompt_number(str(len(prompts)), prompts))
+        self.assertTrue(is_valid_prompt_number("10", prompts))
         self.assertFalse(is_valid_prompt_number("0", prompts))
         self.assertFalse(is_valid_prompt_number("-1", prompts))
         self.assertFalse(is_valid_prompt_number("1.5", prompts))
         self.assertFalse(is_valid_prompt_number("abc", prompts))
-        self.assertFalse(is_valid_prompt_number(str(len(prompts) + 1), prompts))
+        self.assertFalse(is_valid_prompt_number("11", prompts))
 
     def test_view_categories_include_custom_categories(self) -> None:
         prompts = create_initial_prompts()
@@ -90,8 +94,14 @@ class PromptManagerTest(unittest.TestCase):
         image_prompts = filter_prompts_by_category(prompts, "이미지 생성")
         favorites = get_favorite_prompts(prompts)
 
-        self.assertEqual([prompt["title"] for prompt in image_prompts], ["따뜻한 책방 포스터"])
-        self.assertEqual([prompt["title"] for prompt in favorites], ["블로그 초안 작성"])
+        self.assertEqual(
+            [prompt["title"] for prompt in image_prompts],
+            ["따뜻한 책방 포스터", "친환경 제품 상세 이미지"],
+        )
+        self.assertEqual(
+            [prompt["title"] for prompt in favorites],
+            ["블로그 초안 작성", "15초 릴스 스토리보드"],
+        )
 
     def test_prompt_summary_contains_required_information(self) -> None:
         prompt = create_initial_prompts()[0]
@@ -102,6 +112,36 @@ class PromptManagerTest(unittest.TestCase):
         self.assertIn("카테고리: 텍스트 생성", summary)
         self.assertIn("즐겨찾기: ⭐", summary)
 
+    def test_duplicate_prompt_ignores_case_and_extra_spaces(self) -> None:
+        prompts = create_initial_prompts()
+        original = prompts[0]
+
+        duplicate = find_duplicate_prompt(
+            prompts,
+            "  블로그   초안 작성  ",
+            f"  {original['content']}  ",
+        )
+
+        self.assertEqual(normalize_prompt_text(" AI   Prompt "), "ai prompt")
+        self.assertIsNotNone(duplicate)
+        self.assertEqual(duplicate["title"], "블로그 초안 작성")
+        self.assertIsNone(find_duplicate_prompt(prompts, "블로그 초안 작성", "다른 내용"))
+
+    def test_add_prompt_blocks_duplicate_without_changing_list(self) -> None:
+        prompts = create_initial_prompts()
+        original = prompts[0]
+        output = StringIO()
+
+        with patch(
+            "builtins.input",
+            side_effect=[f"  {original['title']}  ", f"  {original['content']}  "],
+        ):
+            with redirect_stdout(output):
+                add_prompt(prompts)
+
+        self.assertEqual(len(prompts), 10)
+        self.assertIn("동일한 프롬프트가 이미 존재합니다", output.getvalue())
+
     def test_menu_two_and_three_show_expected_lists(self) -> None:
         output = StringIO()
         with patch("builtins.input", side_effect=["2", "3", "1", "8"]):
@@ -111,6 +151,7 @@ class PromptManagerTest(unittest.TestCase):
         result = output.getvalue()
         self.assertIn("[ 전체 프롬프트 목록 ]", result)
         self.assertIn("1. 블로그 초안 작성", result)
+        self.assertIn("10. 주간 회고 질문", result)
         self.assertIn("[ 텍스트 생성 프롬프트 ]", result)
         self.assertIn("프롬프트 관리자를 종료합니다.", result)
 
