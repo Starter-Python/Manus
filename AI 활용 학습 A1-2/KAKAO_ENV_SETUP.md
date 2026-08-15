@@ -21,7 +21,7 @@ Kakao 공식 문서도 장소 검색 REST API에는 REST API 키와 `Authorizati
 | 필요한 항목 | 설명 | 프로젝트에서의 변수명 |
 |---|---|---|
 | Kakao REST API 키 | Kakao Developers 애플리케이션의 REST API 키 | `KAKAO_REST_API_KEY` |
-| OpenAI API 키 | 여행 추천 JSON·최종 리포트 생성용 키 | `OPENAI_API_KEY` |
+| Gemini API 키 | 여행 추천 JSON·최종 리포트 생성용 키 | `GEMINI_API_KEY` |
 | Python 3.10 이상 | 프로그램 실행 환경 | 해당 없음 |
 
 ## 2. `.env.example`을 복사해 개인 `.env` 만들기
@@ -50,12 +50,12 @@ Copy-Item .env.example .env
 텍스트 편집기로 `.env`를 열고 본인의 실제 키를 입력합니다. 아래의 `YOUR_...` 부분만 바꾸며, 따옴표는 꼭 필요하지 않습니다.
 
 ```dotenv
-OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 KAKAO_REST_API_KEY=YOUR_KAKAO_REST_API_KEY
-OPENAI_MODEL=gpt-5-mini
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
-`travel_planner.py`는 시작할 때 `load_dotenv(BASE_DIR / ".env")`를 실행하고, `os.getenv("KAKAO_REST_API_KEY")`로 키를 읽습니다. 따라서 키가 프로그램 코드에 하드코딩되지 않습니다.
+`travel_planner.py`는 시작할 때 `load_dotenv(BASE_DIR / ".env")`를 실행하고, `os.getenv("GEMINI_API_KEY")`와 `os.getenv("KAKAO_REST_API_KEY")`로 키를 읽습니다. 따라서 키가 프로그램 코드에 하드코딩되지 않습니다.
 
 ## 4. GitHub에 키가 올라가지 않는지 확인하기
 
@@ -108,17 +108,17 @@ Kakao Local API가 정상 작동하면 콘솔에 다음과 비슷한 결과가 �
 
 프로그램은 장소 검색 오류가 발생해도 여행 추천과 최종 리포트 생성을 계속 수행합니다. 오류의 단계와 유형은 원본 JSON의 `errors` 배열에 저장되므로, 어떤 부분을 점검해야 하는지 추적할 수 있습니다.
 
-## 7. 이 프로젝트에서 Gemini API 키가 필요하지 않은 이유
+## 7. Gemini API 키 설정
 
-과제 요구사항은 LLM 제공자로 **OpenAI 계열 또는 Google Gemini 계열 중 하나를 선택**하도록 되어 있습니다. 현재 `travel_planner.py`는 OpenAI 호환 Chat Completions API를 선택해 구현했으므로 `OPENAI_API_KEY`가 필요하고, Gemini API 키는 사용하지 않습니다.
+과제 요구사항은 LLM 제공자로 **OpenAI 계열 또는 Google Gemini 계열 중 하나를 선택**하도록 되어 있습니다. 현재 `travel_planner.py`는 Google Gemini API의 `generateContent` REST 엔드포인트를 사용하도록 구현되어 있으므로 `GEMINI_API_KEY`가 필요합니다. Gemini API 키는 Google AI Studio에서 발급하며, 무료 등급은 일부 모델과 제한된 요청량을 제공합니다.[3]
 
 | 상황 | 필요한 LLM 키 |
 |---|---|
-| 현재 제출된 코드 그대로 실행 | `OPENAI_API_KEY` |
-| 코드를 Gemini SDK 또는 Gemini REST API 방식으로 별도 변경 | `GEMINI_API_KEY` 또는 Google AI Studio 키 |
+| 현재 제출된 코드 그대로 실행 | `GEMINI_API_KEY` |
+| 모델명을 변경해야 할 때 | 선택적으로 `GEMINI_MODEL` |
 | Kakao 맛집 검색 실행 | 별도로 `KAKAO_REST_API_KEY` |
 
-개발·검증 환경에는 OpenAI 키가 사전 설정되어 있어 테스트 중 별도로 사용자 키를 요청하지 않았습니다. 그러나 사용자의 로컬 컴퓨터에서 실행할 때는 본인의 OpenAI 키를 `.env`에 설정해야 합니다. Gemini 키는 OpenAI 구현을 Gemini 구현으로 교체할 때에만 필요합니다.
+현재 기본 모델은 `gemini-2.5-flash`입니다. 계정의 무료 등급에서 이 모델을 사용할 수 없거나 요청 제한에 도달하면, Google AI Studio에서 사용 가능한 모델로 `GEMINI_MODEL`을 바꾸거나 제한이 해제될 때까지 기다립니다.
 
 ## 8. 키가 노출되었을 때의 조치
 
@@ -131,3 +131,5 @@ Kakao Local API가 정상 작동하면 콘솔에 다음과 비슷한 결과가 �
 [1] [Kakao Developers, 로컬 API: 키워드로 장소 검색](https://developers.kakao.com/docs/latest/ko/local/dev-guide#search-by-keyword)
 
 [2] [GitHub Docs, Using secrets in GitHub Actions](https://docs.github.com/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions)
+
+[3] [Google AI, Gemini Developer API Pricing](https://ai.google.dev/gemini-api/docs/pricing)
