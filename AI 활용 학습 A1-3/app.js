@@ -47,7 +47,12 @@ async function requestRoutine(payload) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: controller.signal,
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || '루틴을 만드는 중 문제가 발생했습니다.');
+    if (!response.ok) {
+      const previewNotice = response.status === 404
+        ? 'AI 서버를 찾지 못했습니다. Vercel에서 `AI 활용 학습 A1-3`을 Root Directory로 설정한 뒤 다시 배포해 주세요.'
+        : '루틴을 만드는 중 문제가 발생했습니다.';
+      throw new Error(body.error || previewNotice);
+    }
     return body;
   } finally { window.clearTimeout(timeout); }
 }
