@@ -1,8 +1,14 @@
-"""A1-1 과제: 메모리 기반 Python 콘솔 프롬프트 관리자."""
+"""A1-1 과제: VSCode 통합 터미널에서 사용하는 콘솔 프롬프트 관리자.
+
+이 프로그램은 실행 중에는 메모리에 데이터를 유지하고, 종료 후 다시 실행하면
+기본 예시 데이터로 초기화된다. 입력이 필요한 프로그램이므로 VSCode의
+Output 창이나 Debug Console이 아니라 통합 터미널에서 실행해야 한다.
+"""
 
 from __future__ import annotations
 
 from copy import deepcopy
+import sys
 from typing import TypedDict
 
 
@@ -13,6 +19,10 @@ class Prompt(TypedDict):
     content: str
     category: str
     favorite: bool
+
+
+class UserInputCancelled(Exception):
+    """입력 스트림이 닫히거나 사용자가 Ctrl+C로 입력을 중단했을 때 사용한다."""
 
 
 CATEGORIES = (
@@ -58,16 +68,42 @@ MENU_OPTIONS = {
 
 
 def create_initial_prompts() -> list[Prompt]:
-    """기본 프롬프트를 복사해 실행별 독립 목록을 생성한다."""
+    """기본 프롬프트를 깊은 복사해 실행별 독립 목록을 생성한다."""
 
     return deepcopy(DEFAULT_PROMPTS)
+
+
+def is_interactive_terminal() -> bool:
+    """현재 실행 환경이 사용자 입력을 안정적으로 받을 수 있는 터미널인지 확인한다."""
+
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def show_terminal_execution_help() -> None:
+    """VSCode Output·Debug Console에서 실행했을 때 통합 터미널 실행 방법을 안내한다."""
+
+    print("\n[ 실행 환경 안내 ]")
+    print("이 프로그램은 사용자 입력이 필요한 콘솔 프로그램입니다.")
+    print("VSCode의 Output 창, Debug Console, 'Run Code' 실행이 아니라 통합 터미널을 사용하세요.")
+    print("1. VSCode 메뉴에서 Terminal > New Terminal을 선택합니다.")
+    print('2. cd "AI 활용 학습 A1-1"을 입력합니다.')
+    print("3. Windows는 python prompt_manager.py, macOS·Linux는 python3 prompt_manager.py를 입력합니다.")
+
+
+def read_user_input(prompt: str) -> str:
+    """입력을 받고, EOF 또는 Ctrl+C 중단을 호출자에게 일관되게 알린다."""
+
+    try:
+        return input(prompt)
+    except (EOFError, KeyboardInterrupt) as error:
+        raise UserInputCancelled from error
 
 
 def get_non_empty_input(label: str) -> str:
     """공백이 아닌 값이 입력될 때까지 사용자의 입력을 받는다."""
 
     while True:
-        value = input(f"{label}: ").strip()
+        value = read_user_input(f"{label}: ").strip()
         if value:
             return value
         print(f"{label}은(는) 비워둘 수 없습니다. 다시 입력하세요.")
@@ -87,7 +123,7 @@ def get_prompt_index(prompts: list[Prompt]) -> int | None:
         return None
 
     while True:
-        value = input("프롬프트 번호를 입력하세요: ").strip()
+        value = read_user_input("프롬프트 번호를 입력하세요: ").strip()
         if is_valid_prompt_number(value, prompts):
             return int(value) - 1
         print("잘못된 프롬프트 번호입니다. 목록의 번호를 입력하세요.")
@@ -102,7 +138,7 @@ def choose_category() -> str:
     print("0. 직접 입력")
 
     while True:
-        choice = input("카테고리 번호를 입력하세요: ").strip()
+        choice = read_user_input("카테고리 번호를 입력하세요: ").strip()
         if choice == "0":
             return get_non_empty_input("직접 입력할 카테고리")
         if choice.isdigit() and 1 <= int(choice) <= len(CATEGORIES):
@@ -128,6 +164,16 @@ def add_prompt(prompts: list[Prompt]) -> None:
     print(f"'{title}' 프롬프트가 추가되었습니다.")
 
 
+def format_prompt_summary(number: int, prompt: Prompt) -> str:
+    """목록에 출력할 프롬프트 한 줄을 만든다."""
+
+    favorite_mark = "⭐" if prompt["favorite"] else "-"
+    return (
+        f"{number}. {prompt['title']} | 카테고리: {prompt['category']} | "
+        f"즐겨찾기: {favorite_mark}"
+    )
+
+
 def show_prompt_list(prompts: list[Prompt], heading: str = "전체 프롬프트 목록") -> None:
     """프롬프트 목록을 번호, 제목, 카테고리, 즐겨찾기 표시와 함께 출력한다."""
 
@@ -137,11 +183,7 @@ def show_prompt_list(prompts: list[Prompt], heading: str = "전체 프롬프트 
         return
 
     for number, prompt in enumerate(prompts, start=1):
-        favorite_mark = "⭐" if prompt["favorite"] else "-"
-        print(
-            f"{number}. {prompt['title']} | 카테고리: {prompt['category']} | "
-            f"즐겨찾기: {favorite_mark}"
-        )
+        print(format_prompt_summary(number, prompt))
 
 
 def get_view_categories(prompts: list[Prompt]) -> list[str]:
@@ -162,18 +204,23 @@ def select_category_to_view(prompts: list[Prompt]) -> str:
         print(f"{number}. {category}")
 
     while True:
-        choice = input("카테고리 번호를 입력하세요: ").strip()
+        choice = read_user_input("카테고리 번호를 입력하세요: ").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(categories):
             return categories[int(choice) - 1]
         print("잘못된 카테고리 번호입니다. 다시 입력하세요.")
+
+
+def filter_prompts_by_category(prompts: list[Prompt], category: str) -> list[Prompt]:
+    """지정한 카테고리에 속한 프롬프트만 반환한다."""
+
+    return [prompt for prompt in prompts if prompt["category"] == category]
 
 
 def show_prompts_by_category(prompts: list[Prompt]) -> None:
     """선택한 카테고리에 속한 프롬프트만 출력한다."""
 
     category = select_category_to_view(prompts)
-    filtered_prompts = [prompt for prompt in prompts if prompt["category"] == category]
-    show_prompt_list(filtered_prompts, f"{category} 프롬프트")
+    show_prompt_list(filter_prompts_by_category(prompts, category), f"{category} 프롬프트")
 
 
 def find_prompts(prompts: list[Prompt], keyword: str) -> list[Prompt]:
@@ -226,11 +273,16 @@ def toggle_favorite(prompts: list[Prompt]) -> None:
     print(f"'{prompt['title']}' 프롬프트를 즐겨찾기에서 {action}했습니다.")
 
 
+def get_favorite_prompts(prompts: list[Prompt]) -> list[Prompt]:
+    """즐겨찾기된 프롬프트만 반환한다."""
+
+    return [prompt for prompt in prompts if prompt["favorite"]]
+
+
 def show_favorites(prompts: list[Prompt]) -> None:
     """즐겨찾기된 프롬프트만 모아 출력한다."""
 
-    favorite_prompts = [prompt for prompt in prompts if prompt["favorite"]]
-    show_prompt_list(favorite_prompts, "즐겨찾기 프롬프트")
+    show_prompt_list(get_favorite_prompts(prompts), "즐겨찾기 프롬프트")
 
 
 def show_menu() -> None:
@@ -247,20 +299,19 @@ def get_menu_choice() -> str:
     """유효한 메뉴 번호가 입력될 때까지 재입력받는다."""
 
     while True:
-        choice = input("메뉴 번호를 입력하세요: ").strip()
+        choice = read_user_input("메뉴 번호를 입력하세요: ").strip()
         if choice in MENU_OPTIONS:
             return choice
         print("잘못된 메뉴 번호입니다. 표시된 번호를 입력하세요.")
 
 
-def main() -> None:
-    """메뉴를 반복 출력하고 종료 선택을 처리한다."""
+def run_menu_loop(prompts: list[Prompt]) -> None:
+    """메뉴를 반복 출력하고 선택한 기능을 실행한다."""
 
-    prompts = create_initial_prompts()
-    print("프롬프트 관리자에 오신 것을 환영합니다.")
     while True:
         show_menu()
         choice = get_menu_choice()
+
         if choice == "1":
             add_prompt(prompts)
         elif choice == "2":
@@ -277,7 +328,21 @@ def main() -> None:
             show_favorites(prompts)
         elif choice == "8":
             print("프롬프트 관리자를 종료합니다. 안녕히 가세요.")
-            break
+            return
+
+
+def main() -> None:
+    """실행 환경을 확인한 뒤 메뉴 기반 프로그램을 시작한다."""
+
+    if not is_interactive_terminal():
+        show_terminal_execution_help()
+        return
+
+    print("프롬프트 관리자에 오신 것을 환영합니다.")
+    try:
+        run_menu_loop(create_initial_prompts())
+    except UserInputCancelled:
+        print("\n입력이 중단되어 프로그램을 종료합니다. 안녕히 가세요.")
 
 
 if __name__ == "__main__":
